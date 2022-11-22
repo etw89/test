@@ -1,0 +1,101 @@
+---
+title: "ETW's Data Analysis Plan"
+output: html_notebook
+---
+
+
+##Reading In Actigraphy Data First
+```{r}
+rm(list = ls())
+setwd("C:/Users/Ellita/Documents/BioStatIndp/AllData")
+#reading in csv of actigraphy
+juju <- read.csv(file = "001.CSV", header = FALSE, skip = 146)
+```
+
+##Naming Columns and Removing An Unwanted Column at the End of The Actigraphy Dataset
+```{r}
+#naming the columns of the actigraphy data
+colnames(juju) <- c("Line", "Day", "Date", "Time", "Offwrist",
+                       "Activity","Marker", "whiteLight","redLight","greenLight",
+                       "blueLight", "SleepWake", "IntervalStatus")
+#removing the unwanted, empty 14th column in the acitgraphy data
+juju <- juju[, 1:13]
+```
+
+##Removing Days When Actigraphy Was Not on 001's Wrist, But still Collecting Information per the 7-day protocol
+```{r}
+
+#removing the empty days of actigraphy when the patient did not have the watch on
+juju <- juju[-c(8167:20160), ]
+```
+
+##Converting Standard 12 Hour in 24 HRS scale for Actigraphy
+```{r}
+#making 24hr time schedule of the actigraphy data
+juju$datetime <-as.POSIXct(paste(juju$Date,juju$Time), format = "%m/%e/%Y%I:%M:%S %p")
+```
+
+
+#Removing Unwanted Columns From Actigraphy Data:
+* "Line"
+* "White"", "Blue"", "Red"", "Green" light
+* "Date"
+* "Time"
+* "Marker"
+* "OffWrist"
+* "Day"
+```{r}
+#removing the line number of the data
+juju$"Line" <- NULL
+#removing all of the light information
+juju$"whiteLight" <- NULL
+juju$"greenLight" <- NULL
+juju$"blueLight" <- NULL
+juju$"redLight" <- NULL
+juju$"Date" <- NULL
+juju$"Time" <- NULL
+juju$"Marker" <- NULL
+juju$"Offwrist" <- NULL
+juju$"Day" <- NULL
+```
+
+##Hard-Cut of Actigraphy Data to Match Protoport Data (looked at protoport data earlier)
+```{r}
+#hard cut of Actigraphy data to match the data points in the protoport
+juju <- subset(juju, juju$datetime >= as.POSIXct('2016-06-27 14:13:30') & juju$datetime <= as.POSIXct('2016-06-28 12:30:30'))
+
+```
+
+#Reading in Protoport Data, Naming Columns
+```{r}
+# reading in protoport data
+bean <- read.csv(file = "GN_001_Protoport.TXT", header = FALSE)
+
+#name columns of protoport
+colnames(bean) <- c("datetime", "LUX", "MOVE", "SOUND")
+
+```
+
+##Converting Standard 12 Hour in 24 HRS scale for Protoport
+```{r}
+#converting time in protoport
+bean$datetime <- as.POSIXct(bean$datetime, format= "%m/%e/%Y %H:%M:%S")
+
+```
+
+## Removing Duplicates in Protoport, Making NA's in "LUX" variable "0"
+```{r}
+#removing duplicates
+bean <-subset(bean, !duplicated(bean$datetime))
+bean$LUX[(is.na(bean$LUX))]<- 0
+head(bean, n = 30)
+```
+
+Aggregating Proport Data from 1 second to 30 second epochs
+```{r}
+#aggregating protoport data to 30 sec intervals
+bean30 <- aggregate(x= bean, by = list(cut(bean$datetime, breaks = "30 sec")), FUN = mean)
+```
+
+
+
